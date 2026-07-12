@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dzta-contract-bridge
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: dzta-contract.default.svc.cluster.local
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dzta_contract
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: dzta-contract.default.svc.cluster.local

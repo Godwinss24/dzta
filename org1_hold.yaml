@@ -48,7 +48,7 @@ certificateAuthorities:
         -----END CERTIFICATE-----
     url: https://org1-ca.localho.st:443
 channels:
-  demo:
+  _default:
     orderers:
     - ord-node1.default
     - ord-node2.default
@@ -220,7 +220,7 @@ peers:
         N/cSh0d6YXCxOkmWaeFWZqy4wa3nmwIgU6adjhrdc2V3uwI6t1Z4UiDeY9WC1WXt
         UhIbjJtBVDY=
         -----END CERTIFICATE-----
-    url: grpcs://peer0-org1.localho.st:7051
+    url: grpcs://peer0-org1.localho.st:443
   org1-peer1.default:
     grpcOptions:
       allow-insecure: false

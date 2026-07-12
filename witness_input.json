@@ -1,12 +1,12 @@
 {
   "clearanceLevel": 5,
-  "credentialId": "5f0002d6-c00c-4c5b-99e9-4b256b4366ba",
-  "expiresAt": 1783265534,
-  "issuedAt": 1783261934,
+  "credentialId": "aba4e865-d26e-41d9-ba38-96ee536c0c5a",
+  "expiresAt": 1814880734,
+  "issuedAt": 1783341134,
   "issuerDid": "did:example:issuer",
   "orgId": "org_dod",
   "schemaId": "mock-schema-id",
   "subjectDid": "did:example:subject",
-  "timestamp": 1783261934,
+  "timestamp": 1783344734,
   "userRoleId": "security_officer"
 }

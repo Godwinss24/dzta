@@ -38,7 +38,22 @@ impl CredentialManager {
     ) -> WalletResult<StoredCredential> {
         let credential_id = Uuid::new_v4().to_string();
 
-        // Build W3C Verifiable Credential
+        // 1. Live Fetch the target schema structure from Fabric/Mock layer
+        let schema = self.get_schema(schema_id).await?;
+
+        // 2. Draft the raw Subject data mapping
+        let subject_payload = json!({
+            "id": subject_did,
+            "userRoleId": credential_attributes.user_role_id,
+            "orgId": credential_attributes.org_id,
+            "clearanceLevel": credential_attributes.clearance_level,
+            "timestamp": credential_attributes.timestamp,
+        });
+
+        // 3. ENFORCE structural integrity dynamically against the active schema definition
+        crate::schema_engine::SchemaEngine::validate_fields(&schema, &subject_payload)?;
+
+        // 4. Build W3C Verifiable Credential if validation succeeds
         let vc = json!({
             "@context": [
                 "https://www.w3.org/2018/credentials/v1",
@@ -50,13 +65,7 @@ impl CredentialManager {
             "expirationDate": chrono::DateTime::<chrono::Utc>::from_timestamp(expires_at_unix, 0)
                 .unwrap()
                 .to_rfc3339(),
-            "credentialSubject": {
-                "id": subject_did,
-                "userRoleId": credential_attributes.user_role_id,
-                "orgId": credential_attributes.org_id,
-                "clearanceLevel": credential_attributes.clearance_level,
-                "timestamp": credential_attributes.timestamp,
-            },
+            "credentialSubject": subject_payload,
             "proof": {
                 "type": "Ed25519Signature2018",
                 "verificationMethod": format!("{}#key-1", issuer_did),
@@ -92,39 +101,9 @@ impl CredentialManager {
             stored_in_askar: true,
         };
 
-        info!("Credential created and stored: {}", credential_id);
+        info!("Credential created and stored post-validation: {}", credential_id);
         Ok(credential)
     }
-
-    // pub async fn initialize_askar_store(
-    //     &self,
-    //     pass_key: &str,
-    // ) -> WalletResult<()> {
-    //     info!("Initializing Askar store at: {}", self.askar_store_path);
-
-    //     // Access KdfMethod through the exposed storage submodule re-export
-    //     use aries_askar::storage::KdfMethod;
-
-    //     let key_method = StoreKeyMethod::DeriveKey(KdfMethod::Argon2i(Default::default()));
-
-    //     let store = Store::open(
-    //         &format!("sqlite://{}", self.askar_store_path),
-    //         Some(key_method),
-    //         pass_key.to_string().into(),
-    //         None,
-    //     )
-    //     .await
-    //     .map_err(|e| {
-    //         error!("Failed to open Askar store: {:?}", e);
-    //         WalletError::StorageError(format!("Askar store initialization failed: {}", e))
-    //     })?;
-
-    //     let mut store_lock = self.askar_store.write().await;
-    //     *store_lock = Some(store);
-
-    //     info!("Askar store initialized successfully");
-    //     Ok(())
-    // }
 
     pub async fn initialize_askar_store(
         &self,

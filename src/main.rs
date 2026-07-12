@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Initializing wallet server...");
 
     // Load connection profile
-    let config = ConnectionConfig::from_file("config/connection-profile.yaml")?;
+    let config = ConnectionConfig::from_file("config/connection-profile.yaml").await?;
     info!("✓ Connection profile loaded");
 
     // Initialize Fabric client

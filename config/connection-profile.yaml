@@ -1,3 +1,5 @@
+#connection-profile.yaml
+
 name: "hlf-network"
 version: "1.0"
 
@@ -7,6 +9,12 @@ client:
     path: "/tmp/wallet"
     cryptoStore:
       path: "/tmp/msp"
+  tlsCerts:
+    client:
+      key:
+        path: "config/certs/cas/admin-key.key"
+      cert:
+        path: "config/certs/cas/admin-cert.crt"
 
 organizations:
   Org1MSP:
@@ -20,9 +28,9 @@ organizations:
     users:
       admin:
         cert:
-          path: "config/certs/admin-cert.crt"
+          path: "config/certs/cas/admin-cert.crt"
         key:
-          path: "config/certs/admin-key.key"
+          path: "config/certs/cas/admin-key.key"
 
   OrdererMSP:
     mspid: OrdererMSP
@@ -96,7 +104,7 @@ certificateAuthorities:
       verify: false
 
 channels:
-  _default:
+  demo:
     orderers:
       - ord-node1.default
       - ord-node2.default
