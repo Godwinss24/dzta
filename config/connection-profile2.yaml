@@ -1,0 +1,163 @@
+name: "hlf-network"
+version: "1.0"
+
+client:
+  organization: Org1MSP
+  credentialStore:
+    path: "/home/godwins/Github/Rust-Projects/dzta/network_config/wallet"
+    cryptoStore:
+      path: "/home/godwins/Github/Rust-Projects/dzta/network_config/msp"
+  tlsCerts:
+    client:
+      key:
+        path: "/home/godwins/Github/Rust-Projects/dzta/network_config/org1-admin/admin-key.key"
+      cert:
+        path: "/home/godwins/Github/Rust-Projects/dzta/network_config/org1-admin/admin-cert.crt"
+
+organizations:
+  Org1MSP:
+    mspid: Org1MSP
+    peers:
+      - org1-peer0
+      - org1-peer1
+    certificateAuthorities:
+      - org1-ca
+    users:
+      admin:
+        cert:
+          path: "/home/godwins/Github/Rust-Projects/dzta/network_config/org1-admin/admin-cert.crt"
+        key:
+          path: "/home/godwins/Github/Rust-Projects/dzta/network_config/org1-admin/admin-key.key"    
+
+  Org2MSP:
+    mspid: Org2MSP
+    peers:
+      - org2-peer0
+      - org2-peer1
+    certificateAuthorities:
+      - org2-ca
+    users:
+      admin:
+        cert:
+          path: "/home/godwins/Github/Rust-Projects/dzta/network_config/org2-admin/admin-cert.crt"
+        key:
+          path: "/home/godwins/Github/Rust-Projects/dzta/network_config/org2-admin/admin-key.key"    
+
+  OrdererMSP:
+    mspid: OrdererMSP
+    orderers:
+      - ord-node1
+      - ord-node2
+      - ord-node3
+
+peers:
+  org1-peer0:
+    url: "grpcs://peer0-org1.localho.st:443"
+    grpcOptions:
+      ssl-target-name-override: "peer0-org1.localho.st"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/dzta/network_config/org1-tlsca.crt"
+
+  org1-peer1:
+    url: "grpcs://peer1-org1.localho.st:443"
+    grpcOptions:
+      ssl-target-name-override: "peer1-org1.localho.st"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/dzta/network_config/org1-tlsca.crt"
+
+  org2-peer0:
+    url: "grpcs://peer0-org2.localho.st:443"
+    grpcOptions:
+      ssl-target-name-override: "peer0-org2.localho.st"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/dzta/network_config/org2.tlsca.crt"
+
+  org2-peer1:
+    url: "grpcs://peer1-org2.localho.st:443"
+    grpcOptions:
+      ssl-target-name-override: "peer1-org2.localho.st"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/dzta/network_config/org2.tlsca.crt"
+
+orderers:
+  ord-node1:
+    url: "grpcs://orderer0-ord.localho.st:443"
+    grpcOptions:
+      ssl-target-name-override: "orderer0-ord.localho.st"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/dzta/network_config/orderer.tlsca.crt"
+
+  ord-node2:
+    url: "grpcs://orderer1-ord.localho.st:443"
+    grpcOptions:
+      ssl-target-name-override: "orderer1-ord.localho.st"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/dzta/network_config/orderer.tlsca.crt"
+
+  ord-node3:
+    url: "grpcs://orderer2-ord.localho.st:443"
+    grpcOptions:
+      ssl-target-name-override: "orderer2-ord.localho.st"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/dzta/network_config/orderer.tlsca.crt"
+
+certificateAuthorities:
+  org1-ca:
+    url: "https://org1-ca.localho.st:443"
+    caName: ca
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/dzta/network_config/org1-tlsca.crt"
+    registrar:
+      enrollId: enroll
+      enrollSecret: enrollpw
+    httpOptions:
+      verify: false
+
+  org2-ca:
+    url: "https://org2-ca.localho.st:443"
+    caName: ca
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/dzta/network_config/org2.tlsca.crt"
+    registrar:
+      enrollId: enroll
+      enrollSecret: enrollpw
+    httpOptions:
+      verify: false
+
+channels:
+  demo:
+    orderers:
+      - ord-node1
+      - ord-node2
+      - ord-node3
+    peers:
+      org1-peer0:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true
+
+      org1-peer1:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true
+
+      org2-peer0:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true
+
+      org2-peer1:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true

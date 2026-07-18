@@ -1,1 +1,5 @@
 /target
+chaincode.tgz
+code.tar.gz
+*txt
+network_config

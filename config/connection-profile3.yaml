@@ -1,0 +1,176 @@
+name: "hlf-network"
+version: "1.0"
+
+client:
+  organization: Org1MSP
+  credentialStore:
+    path: "/home/godwins/Github/Rust-Projects/dzta/network_config/wallet"
+    cryptoStore:
+      path: "/home/godwins/Github/Rust-Projects/dzta/network_config/msp"
+  tlsCerts:
+    client:
+      key:
+        path: /home/godwins/Github/Rust-Projects/fabric-network/channel/config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key
+      cert:
+        path: /home/godwins/Github/Rust-Projects/fabric-network/channel/config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt
+
+organizations:
+  Org1MSP:
+    mspid: Org1MSP
+    peers:
+      - org1-peer0
+      - org1-peer1
+    certificateAuthorities:
+      - org1-ca
+    users:
+      admin:
+        cert:
+          path: /home/godwins/Github/Rust-Projects/fabric-network/channel/config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/signcerts/Admin@org1.example.com-cert.pem
+        key:
+          path: /home/godwins/Github/Rust-Projects/fabric-network/channel/config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/priv_sk
+  Org2MSP:
+    mspid: Org2MSP
+    peers:
+      - org2-peer0
+      - org2-peer1
+    certificateAuthorities:
+      - org2-ca
+    users:
+      admin:
+        cert:
+          path: /home/godwins/Github/Rust-Projects/fabric-network/channel/config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp/signcerts/Admin@org2.example.com-cert.pem
+        key:
+          path: /home/godwins/Github/Rust-Projects/fabric-network/channel/config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp/keystore/priv_sk
+
+  OrdererMSP:
+    mspid: OrdererMSP
+    orderers:
+      - ord-node1
+      - ord-node2
+      - ord-node3
+      - ord-node4
+
+peers:
+  org1-peer0:
+    url: "grpcs://localhost:7051"
+    grpcOptions:
+      ssl-target-name-override: "peer0.org1.example.com"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/fabric-network/channel/config/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem"
+
+  org1-peer1:
+    url: "grpcs://localhost:8051"
+    grpcOptions:
+      ssl-target-name-override: "peer1.org1.example.com"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/fabric-network/channel/config/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem"
+
+  org2-peer0:
+    url: "grpcs://localhost:9051"
+    grpcOptions:
+      ssl-target-name-override: "peer0.org2.example.com"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/fabric-network/channel/config/peerOrganizations/org2.example.com/tlsca/tlsca.org2.example.com-cert.pem"
+
+  org2-peer1:
+    url: "grpcs://localhost:10051"
+    grpcOptions:
+      ssl-target-name-override: "peer1.org2.example.com"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/fabric-network/channel/config/peerOrganizations/org2.example.com/tlsca/tlsca.org2.example.com-cert.pem"
+
+orderers:
+  ord-node1:
+    url: "grpcs://localhost:7050"
+    grpcOptions:
+      ssl-target-name-override: "orderer.example.com"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/fabric-network/channel/config/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem"
+
+  ord-node2:
+    url: "grpcs://localhost:8050"
+    grpcOptions:
+      ssl-target-name-override: "orderer2.example.com"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/fabric-network/channel/config/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem"
+
+  ord-node3:
+    url: "grpcs://localhost:9050"
+    grpcOptions:
+      ssl-target-name-override: "orderer3.example.com"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/fabric-network/channel/config/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem"
+
+  ord-node4:
+    url: "grpcs://localhost:10050"
+    grpcOptions:
+      ssl-target-name-override: "orderer4.example.com"
+      allow-insecure: false
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/fabric-network/channel/config/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem"
+
+
+certificateAuthorities:
+  org1-ca:
+    url: "https://ca.org1.example.com:7054"
+    caName: ca
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/fabric-network/channel/config/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem"
+    registrar:
+      enrollId: enroll
+      enrollSecret: enrollpw
+    httpOptions:
+      verify: false
+
+  org2-ca:
+    url: "https://ca.org2.example.com:8054"
+    caName: ca
+    tlsCACerts:
+      path: "/home/godwins/Github/Rust-Projects/fabric-network/channel/config/peerOrganizations/org2.example.com/ca/ca.org2.example.com-cert.pem"
+    registrar:
+      enrollId: enroll
+      enrollSecret: enrollpw
+    httpOptions:
+      verify: false
+
+channels:
+  dzta-france:
+    orderers:
+      - ord-node1
+      - ord-node2
+      - ord-node3
+      - ord-node4
+    peers:
+      org1-peer0:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true
+
+      org1-peer1:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true
+
+      org2-peer0:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true
+
+      org2-peer1:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true
+
+
+

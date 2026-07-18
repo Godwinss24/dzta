@@ -13,11 +13,11 @@ async fn test_full_credential_lifecycle_e2e() {
     info!("Starting decentralized Zero-Trust Architecture (dZTA) E2E integration test pipeline...");
 
     // Path to your local Fabric network configuration profile
-    let config_path = "config/connection-profile.yaml"; 
+    let config_path = "/home/godwins/Github/Rust-Projects/dzta/config/connection-profile2.yaml"; 
     let channel_name = "demo";
-    let chaincode_name = "dztac";
+    let chaincode_name = "dzta";
     let org_name = "Org1MSP";        // Set this to match your YAML profile org key
-    let peer_name = "org1-peer0.default"; // Set this to match your YAML profile peer key
+    let peer_name = "org1-peer0"; // Set this to match your YAML profile peer key
 
     let _config_exists = std::path::Path::new(config_path).exists();
 
@@ -30,17 +30,18 @@ async fn test_full_credential_lifecycle_e2e() {
         }
         Err(e) => {
             warn!("Could not read connection profile ({}). Falling back to local Mock validation buffers.", e);
-            FabricClient {
-                config: std::sync::Arc::new(tokio::sync::RwLock::new(match ConnectionConfig::from_file(config_path).await {
-                    Ok(cfg) => cfg,
-                    Err(_) => unsafe { std::mem::transmute::<[u8; std::mem::size_of::<ConnectionConfig>()], ConnectionConfig>([0u8; std::mem::size_of::<ConnectionConfig>()]) }
-                })), 
-                channel_name: channel_name.to_string(),
-                chaincode_name: chaincode_name.to_string(),
-                org_mspid: "Org1MSP".to_string(),
-                peer_url: "grpcs://peer0-org1.localho.st:443".to_string(),
-                is_mock: true, 
-            }
+            // FabricClient {
+            //     config: std::sync::Arc::new(tokio::sync::RwLock::new(match ConnectionConfig::from_file(config_path).await {
+            //         Ok(cfg) => cfg,
+            //         Err(_) => unsafe { std::mem::transmute::<[u8; std::mem::size_of::<ConnectionConfig>()], ConnectionConfig>([0u8; std::mem::size_of::<ConnectionConfig>()]) }
+            //     })), 
+            //     channel_name: channel_name.to_string(),
+            //     chaincode_name: chaincode_name.to_string(),
+            //     org_mspid: "Org1MSP".to_string(),
+            //     peer_url: "grpcs://peer0-org1.localho.st:443".to_string(),
+            //     is_mock: true, 
+            // }
+            return;
         }
     };
 
@@ -77,6 +78,7 @@ async fn test_full_credential_lifecycle_e2e() {
     
     // --- MODIFICATION HERE: Parse the certificate content instead of using the path string ---
     let cert_path = user_context.get_cert_pem(); 
+    info!("Cert path: {}",cert_path);
     let cert_bytes = std::fs::read(&cert_path)
         .unwrap_or_else(|_| panic!("Failed to read certificate from path: {}", cert_path));
     let issuer_pubkey_pem = String::from_utf8(cert_bytes)

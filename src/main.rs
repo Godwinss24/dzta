@@ -1,10 +1,9 @@
-// src/main.rs
 use dzta::{
     FabricClient, CredentialManager, ZKPWitnessGenerator,
     ConnectionConfig, CredentialAttributes, SchemaAttribute,
 };
 use std::sync::Arc;
-use log::{info, error};
+use log::{info};
 use tokio;
 
 #[tokio::main]
@@ -20,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize Fabric client
     let fabric_client = FabricClient::new(
-        "config/connection-profile.yaml",
+        "/home/godwins/Github/Rust-Projects/dzta/config/connection-profile2.yaml",
         "demo",
         "asset",
         "Org1MSP",
