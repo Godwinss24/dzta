@@ -38,10 +38,13 @@ type CredentialMetadata struct {
 }
 
 type DIDDocument struct {
-	ID             string   `json:"id"`
+	DID            string   `json:"did"`
 	PublicKey      string   `json:"public_key"`
 	Authentication []string `json:"authentication"`
 	IssuerDID      string   `json:"issuer_did"`
+	Created        int64    `json:"created"`
+	Updated        int64    `json:"updated"`
+	Active         bool     `json:"active"`
 }
 
 type VerificationReceipt struct {
@@ -197,11 +200,29 @@ func (c *DztaContract) RevokeCredential(ctx contractapi.TransactionContextInterf
 func (c *DztaContract) RegisterDID(ctx contractapi.TransactionContextInterface, did string, issuerDID string, publicKey string) error {
 	key := fmt.Sprintf("DID_%s", did)
 
+	// Reject duplicate registration rather than silently overwriting
+	existing, err := ctx.GetStub().GetState(key)
+	if err != nil {
+		return fmt.Errorf("failed reading world state: %v", err)
+	}
+	if existing != nil {
+		return fmt.Errorf("did document %s already exists", did)
+	}
+
+	txTime, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil {
+		return fmt.Errorf("failed to get tx timestamp: %v", err)
+	}
+	now := txTime.AsTime().Unix()
+
 	doc := DIDDocument{
-		ID:             did,
+		DID:            did,
 		PublicKey:      publicKey,
 		Authentication: []string{"key-1"},
 		IssuerDID:      issuerDID,
+		Created:        now,
+		Updated:        now,
+		Active:         true,
 	}
 
 	docBytes, err := json.Marshal(doc)
