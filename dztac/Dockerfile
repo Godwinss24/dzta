@@ -27,5 +27,5 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o chaincode .
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/chaincode .
-EXPOSE 7052
+EXPOSE 9990
 CMD ["./chaincode"]

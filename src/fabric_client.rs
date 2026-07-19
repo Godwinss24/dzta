@@ -197,7 +197,7 @@ impl FabricClient {
         issuer_did: &str,
         public_key: &str,
     ) -> WalletResult<String> {
-       let invocation = ChaincodeInvocation {
+        let invocation = ChaincodeInvocation {
             function: "PutValue".to_string(),
             args: vec![
                 "king".to_string(),
@@ -214,15 +214,12 @@ impl FabricClient {
         issuer_did: &str,
         public_key: &str,
     ) -> WalletResult<String> {
-       let invocation = ChaincodeInvocation {
+        let invocation = ChaincodeInvocation {
             function: "GetValue".to_string(),
-            args: vec![
-                "king".to_string(),
-            ],
+            args: vec!["king".to_string()],
         };
         self.invoke_chaincode(&invocation).await
     }
-
 
     /// Resolve DID from Fabric ledger
     pub async fn resolve_did(&self, did: &str) -> WalletResult<DIDDocument> {
@@ -232,6 +229,7 @@ impl FabricClient {
         };
 
         let response = self.query_chaincode(&invocation).await?;
+        info!("{:?}", String::from_utf8_lossy(&response));
         let did_doc: DIDDocument =
             serde_json::from_slice(&response).map_err(WalletError::SerializationError)?;
         Ok(did_doc)
@@ -349,15 +347,14 @@ impl FabricClient {
     }
 
     /// Invoke chaincode (write/modify ledger state via gateway endorsement)
-    /// 
-    /// 
+    ///
+    ///
 
     async fn mock_invoke(&self, invocation: &ChaincodeInvocation) {
-           debug!(
+        debug!(
             "Invoking chaincode function: {} with args: {:?}",
             invocation.function, invocation.args
         );
-
     }
 
     async fn invoke_chaincode(&self, invocation: &ChaincodeInvocation) -> WalletResult<String> {
@@ -377,7 +374,7 @@ impl FabricClient {
             ));
         }
 
-        // 1. Load active config mapping and cryptographic context details
+        // 1. Load active config and cryptographic context
         let config_guard = self.config.read().await;
         let user_context = config_guard.get_user_context().map_err(|_| {
             WalletError::ConfigError(
@@ -385,100 +382,57 @@ impl FabricClient {
             )
         })?;
 
-        // 2. Map dynamic internal identity configurations
+        // 2. Build identity and connect to the gateway
         let identity = self.build_sdk_identity(&user_context)?;
-
-        // 3. Establish the live SDK gateway client link
         let client = self
             .connect_gateway_client(identity, &config_guard, "org1-peer0")
             .await?;
 
-        // =================================================================
-        // DIAGNOSTIC LOGGING: Check variables right before call_builder injection
-        // =================================================================
-        info!(
-            "[dZTA SDK Trace] Assembling transaction proposal.\n\
-            Target Channel   : '{}'\n\
-            Target Chaincode : '{}'\n\
-            Target Function  : '{}'\n\
-            Payload Arguments: {:?}",
-            self.channel_name, self.chaincode_name, invocation.function, invocation.args
-        );
-
-        // 4. Assemble proposals using the exact ChaincodeCallBuilder layout patterns
-
-        // Build the prepared payload transaction mapping
-
-        let mut call_builder = client.get_chaincode_call_builder();
-        call_builder
+        // 3. Build the chaincode call
+        let signed_proposal = client
+            .get_chaincode_call_builder()
             .with_channel_name(&self.channel_name)
             .map_err(|e| WalletError::ConfigError(format!("Invalid channel assignment: {:?}", e)))?
             .with_chaincode_id(&self.chaincode_name)
             .map_err(|e| {
                 WalletError::ConfigError(format!("Invalid chaincode execution identifier: {:?}", e))
             })?
+            .with_contract_id("DztaContract")
+            .map_err(|e| WalletError::ConfigError(format!("Invalid contract id: {:?}", e)))?
             .with_function_name(&invocation.function)
             .map_err(|e| {
                 WalletError::ConfigError(format!("Invalid function endpoint layout: {:?}", e))
-            })?;
-            // .with_system_chaincode(); // <-- FORCE THE CLEAN BARE FUNCTION STRING PAYLOAD HERE!
-
-        call_builder
+            })?
             .with_function_args(&invocation.args)
             .map_err(|e| {
-                WalletError::ConfigError(format!(
-                    "Failed to inject transaction string payloads: {:?}",
-                    e
-                ))
+                WalletError::ConfigError(format!("Failed to inject transaction payload: {:?}", e))
+            })?
+            .build()
+            .map_err(|e| {
+                WalletError::ChaincodeFailed(format!("Failed to build chaincode call: {:?}", e))
             })?;
 
-        let prepared_tx = call_builder.build_prepared().map_err(|e| {
-            WalletError::ChaincodeFailed(format!(
-                "Failed to construct prepared execution payload: {:?}",
-                e
-            ))
+        // 4. Endorse, submit, and wait for commit
+        let mut envelope = signed_proposal
+            .endorse(&client)
+            .await
+            .map_err(|e| WalletError::ChaincodeFailed(format!("Endorsement failed: {:?}", e)))?;
+
+        envelope.submit(&client).await.map_err(|e| {
+            WalletError::ChaincodeFailed(format!("Submission to orderer failed: {:?}", e))
         })?;
 
-        // Safely pull out the Transaction ID for validation tracing
-        let tx_id = prepared_tx
-            .signed_proposal()
-            .get_proposal()
-            .and_then(|p| p.get_header())
-            .and_then(|h| h.get_channel_header())
-            .map(|ch| ch.tx_id)
-            .unwrap_or_default();
-
-        // =================================================================
-        // DIAGNOSTIC LOGGING: Check generated proposal metadata before network flight
-        // =================================================================
-        info!(
-            "[dZTA SDK Trace] Dispatching Proposal for Endorsement.\n\
-            Generated TxID   : '{}'\n\
-            Target Endpoint  : grpcs://peer0-org1.localho.st:443",
-            tx_id
-        );
-
-        // 5. Submit to active network peers for execution consensus signatures
-        let _envelope = prepared_tx.endorse(&client).await.map_err(|e| {
-            WalletError::ChaincodeFailed(format!(
-                "Ledger transaction signature execution rejected: {:?}",
-                e
-            ))
+        envelope.wait_for_commit(&client).await.map_err(|e| {
+            WalletError::ChaincodeFailed(format!("Commit confirmation failed: {:?}", e))
         })?;
 
         info!(
-            "Chaincode invocation submitted successfully: {} (TxID: {}). Awaiting ledger commit...",
-            invocation.function, tx_id
+            "Chaincode invocation committed successfully: {}",
+            invocation.function
         );
 
-        // 6. Polling block commit confirmation using the client's internal commit status handler
-        self.wait_for_transaction_commit(&client, &tx_id, 120)
-            .await?;
-
-        info!("Transaction {} fully committed to block state.", tx_id);
-        Ok(tx_id)
+        Ok(invocation.function.clone())
     }
-
     /// Query chaincode (read ledger state - no orderer consensus required)
     async fn query_chaincode(&self, invocation: &ChaincodeInvocation) -> WalletResult<Vec<u8>> {
         debug!(
@@ -502,8 +456,8 @@ impl FabricClient {
                         "schema_id": "mock-schema-id",
                         "issuer_did": "did:example:issuer",
                         "subject_did": "did:example:subject",
-                        "issued_at": now - 3600,       // Issued 1 hour ago
-                        "expires_at": now + 31536000,   // Expires 1 year from now
+                        "issued_at": now - 3600,
+                        "expires_at": now + 31536000,
                         "revoked": false,
                         "revoked_at": null,
                         "zkp_supported": true,
@@ -532,7 +486,7 @@ impl FabricClient {
             return serde_json::to_vec(&mock_json).map_err(WalletError::SerializationError);
         }
 
-        // 1. Load context layouts
+        // 1. Load active config and cryptographic context
         let config_guard = self.config.read().await;
         let user_context = config_guard.get_user_context().map_err(|_| {
             WalletError::ConfigError(
@@ -540,56 +494,50 @@ impl FabricClient {
             )
         })?;
 
-        // 2. Build live client infrastructure connections
+        // 2. Build identity and connect to the gateway
         let identity = self.build_sdk_identity(&user_context)?;
-        // let client = self.connect_gateway_client(identity, &config_guard).await?;
-        // Inside invoke_chaincode and query_chaincode:
         let client = self
             .connect_gateway_client(identity, &config_guard, "org1-peer0")
             .await?;
 
-        // 3. Assemble the read proposal call parameters
-        let mut call_builder = client.get_chaincode_call_builder();
-        call_builder
+        // 3. Build the read-only chaincode call
+        let prepared_transaction = client
+            .get_chaincode_call_builder()
             .with_channel_name(&self.channel_name)
             .map_err(|e| WalletError::ConfigError(format!("Invalid channel assignment: {:?}", e)))?
             .with_chaincode_id(&self.chaincode_name)
             .map_err(|e| {
                 WalletError::ConfigError(format!("Invalid chaincode execution identifier: {:?}", e))
             })?
+            .with_contract_id("DztaContract")
+            .map_err(|e| WalletError::ConfigError(format!("Invalid contract id: {:?}", e)))?
             .with_function_name(&invocation.function)
             .map_err(|e| {
                 WalletError::ConfigError(format!("Invalid function endpoint layout: {:?}", e))
             })?
-            .with_system_chaincode(); // <-- FORCE THE CLEAN BARE FUNCTION STRING PAYLOAD HERE!
-
-        call_builder
             .with_function_args(&invocation.args)
             .map_err(|e| {
-                WalletError::ConfigError(format!(
-                    "Failed to inject transaction string payloads: {:?}",
-                    e
-                ))
+                WalletError::ConfigError(format!("Failed to inject transaction payload: {:?}", e))
+            })?
+            .build()
+            .map_err(|e| {
+                WalletError::ChaincodeFailed(format!("Failed to build chaincode call: {:?}", e))
             })?;
 
-        let prepared_tx = call_builder.build_prepared().map_err(|e| {
-            WalletError::ChaincodeFailed(format!(
-                "Failed to compile evaluate transaction details: {:?}",
-                e
-            ))
-        })?;
-
-        // 4. Evaluate read-only query states using client endpoints
-        let response_payload = prepared_tx.evaluate(&client).await.map_err(|e| {
-            WalletError::ChaincodeFailed(format!(
-                "Gateway query payload transaction execution failure: {:?}",
-                e
-            ))
-        })?;
+        // 4. Evaluate the read-only query against the gateway
+        let response_payload = client
+            .evaluate(
+                prepared_transaction,
+                String::new(),
+                self.channel_name.clone(),
+            )
+            .await
+            .map_err(|e| {
+                WalletError::ChaincodeFailed(format!("Query evaluation failed: {:?}", e))
+            })?;
 
         Ok(response_payload)
     }
-
     /// Polls the native Fabric Gateway CommitStatus endpoint until a given transaction ID
 
     // / Polls the SDK client's native commit_status verification loop

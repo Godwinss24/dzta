@@ -1,0 +1,5 @@
+{
+  "address": "go-chaincode:9990",
+  "dial_timeout": "10s",
+  "tls_required": false
+}

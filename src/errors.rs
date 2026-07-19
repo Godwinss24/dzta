@@ -27,6 +27,12 @@ pub enum WalletError {
     #[error("Network error: {0}")]
     NetworkError(String),
 
+    #[error("Endorse error: {0}")]
+    EndorseError(String),
+
+    #[error("Commit error: {0}")]
+    CommitError(String),
+
     #[error("Configuration error: {0}")]
     ConfigError(String),
 
@@ -53,7 +59,6 @@ pub enum WalletError {
 
     #[error("Timeout waiting for transaction confirmation")]
     TransactionTimeout,
-
 
     #[error("Unknown error: {0}")]
     Unknown(String),

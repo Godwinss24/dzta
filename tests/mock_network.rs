@@ -5,8 +5,47 @@ use dzta::{
     ConnectionConfig, FabricClient,
     fabric_client::{ClientBuilder, Identity, IdentityBuilder},
 };
-use fabric_sdk::gateway::chaincode::ChaincodeCallBuilder;
+use fabric_sdk::{gateway::chaincode::ChaincodeCallBuilder, gateway::client};
 use log::{error, info, warn};
+
+async fn try_submit(
+    client: &client::Client,
+    channel_name: &str,
+    chaincode_name: &str,
+    function_name: &str,
+    args: &[&str],
+) -> Result<(), String> {
+    let mut builder = client.get_chaincode_call_builder();
+    let b = builder
+        .with_channel_name(channel_name)
+        .unwrap()
+        .with_chaincode_id(chaincode_name)
+        .unwrap()
+        .with_contract_id("DztaContract")
+        .expect("Unable to set contract")
+        .with_function_name(function_name)
+        .unwrap();
+    if !args.is_empty() {
+        b.with_function_args(args).unwrap();
+    }
+    let sp = b.build().unwrap();
+
+    match sp.endorse(client).await {
+        Ok(mut envelope) => {
+            envelope
+                .submit(client)
+                .await
+                .map_err(|err| err.to_string())?;
+            envelope
+                .wait_for_commit(client)
+                .await
+                .map_err(|err| err.to_string())?;
+        }
+        Err(e) => return Err(e.to_string()),
+    }
+
+    Ok(())
+}
 
 #[tokio::test]
 async fn mock_tesssst() {
@@ -14,7 +53,7 @@ async fn mock_tesssst() {
 
     let config_path = "/home/godwins/Github/Rust-Projects/dzta/config/connection-profile3.yaml";
     let channel_name = "dzta-france";
-    let chaincode_name = "asset_chaincode";
+    let chaincode_name = "go_chaincode";
     let org_name = "Org1MSP"; // Set this to match your YAML profile org key
     let peer_name = "org1-peer0"; // Set this to match your YAML profile peer key
 
@@ -81,6 +120,18 @@ async fn mock_tesssst() {
         }
     };
 
+    let peer_endpoint = &network_config
+        .get_peer_config("org1-peer0")
+        .expect("Peer config not found")
+        .url
+        .replace("grpcs://", "")
+        .replace("grpc://", "")
+        .replace("https://", "")
+        .replace("http://", "");
+
+    // Dynamically load the configured TLS CA certi;
+    println!("{}", peer_endpoint);
+
     let identity = match IdentityBuilder::from_pem(cert) {
         Ok(x) => match x
             .with_private_key(pkey)
@@ -102,6 +153,10 @@ async fn mock_tesssst() {
     };
 
     let mut client = match ClientBuilder::new()
+        .with_scheme("https")
+        .expect("UNABLE TO SET SCHEME")
+        .with_authority(peer_endpoint)
+        .expect("UNABLE TO SET AUTHORITY")
         .with_identity(identity)
         .expect("Unable to create builder with identity")
         .with_tls(org_tls_ca)
@@ -129,20 +184,45 @@ async fn mock_tesssst() {
         }
     }
 
-    let prepared_transaction = client
+    //  "ResolveDID",
+    // "did:example:123456",
+    //     "did:example:123456",        // did
+    // "did:example:issuer001",     // issuerDID
+    // "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE..." // publicKey
+    // let builder = client.get_chaincode_call_builder();
+
+    // println!("{}", builder.endorsing_organizations);
+    // println!("{}", builder.chaincode_name);
+
+    let signed_proposal = client
         .get_chaincode_call_builder()
         .with_channel_name("dzta-france")
         .expect("Unable to set channel name")
-        .with_chaincode_id("asset_chaincode")
+        .with_chaincode_id("go_chaincode")
         .expect("Unable to set chaincode id")
-        .with_function_name("PutValue")
+        .with_contract_id("DztaContract")
+        .expect("Unable to set contract")
+        .with_function_name("RegisterDID")
         .expect("Unable to set function name")
-        .with_function_args(["name", "orange"])
+        .with_function_args([
+            "did:example:mail.cooom.goofle.",
+            "did:example:issuer001",
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE",
+        ])
         .expect("Unable to set function arguments")
         .build()
         .expect("Unable to build chaincode call");
 
-    let envelope = match prepared_transaction.endorse(&client).await {
+    // let response = client.process_proposal(signed_proposal).await.expect("UNABLE TO PROCESS PROPOSAL");
+    // let result = response
+    //     .response
+    //     .as_ref()
+    //     .map(|r| r.payload.clone())
+    //     .unwrap_or_default();
+
+    //  info!("Query result: {}", String::from_utf8_lossy(&result));
+
+    let mut envelope = match signed_proposal.endorse(&client).await {
         Ok(x) => x,
         Err(e) => {
             error!("Unable to get envelope. Err: {}", e);
@@ -150,48 +230,58 @@ async fn mock_tesssst() {
         }
     };
 
-    // let fabric_client = match FabricClient::new(
-    //     config_path,
-    //     channel_name,
-    //     chaincode_name,
-    //     org_name,
-    //     peer_name,
-    // )
-    // .await
-    // {
-    //     Ok(client) => {
-    //         info!("Connection profile parsed. Setting live network routing path... ");
-    //         let mut c = client;
-    //         c.set_mock(false); // Clear the default mock flag so it executes live gRPC transactions!
-    //         c
-    //     }
-    //     Err(e) => {
-    //         warn!(
-    //             "Could not read connection profile ({}). Falling back to local Mock validation buffers.",
-    //             e
-    //         );
-    //         // FabricClient {
-    //         //     config: std::sync::Arc::new(tokio::sync::RwLock::new(match ConnectionConfig::from_file(config_path).await {
-    //         //         Ok(cfg) => cfg,
-    //         //         Err(_) => unsafe { std::mem::transmute::<[u8; std::mem::size_of::<ConnectionConfig>()], ConnectionConfig>([0u8; std::mem::size_of::<ConnectionConfig>()]) }
-    //         //     })),
-    //         //     channel_name: channel_name.to_string(),
-    //         //     chaincode_name: chaincode_name.to_string(),
-    //         //     org_mspid: "Org1MSP".to_string(),
-    //         //     peer_url: "grpcs://peer0-org1.localho.st:443".to_string(),
-    //         //     is_mock: true,
-    //         // }
-    //         return;
-    //     }
-    // };
+    match envelope.submit(&client).await {
+        Ok(x) => {
+            match x.wait_for_commit(&client).await {
+                Ok(x) => {
+                    info!("Commit Status Response: {:?}", &x);
+                }
+                Err(e) => {
+                    error!("Unable to get get commit . Err: {}", e);
+                    return;
+                }
+            };
+        }
+        Err(e) => {
+            error!("Unable to submit transaction to orderer. Err: {}", e);
+            return;
+        }
+    }
 
-    // let result = fabric_client
-    //     .mock_fn("did", "issuer_did", "public_key")
-    //     .await;
-    // info!("{:?}", result);
+    let prepared_transaction = client
+        .get_chaincode_call_builder()
+        .with_channel_name("dzta-france")
+        .expect("Unable to set channel name")
+        .with_chaincode_id("go_chaincode")
+        .expect("Unable to set chaincode id")
+        .with_contract_id("DztaContract")
+        .expect("Unable to set contract")
+        .with_function_name("ResolveDID")
+        .expect("Unable to set function name")
+        .with_function_args([
+            "did:example:mail.cooom.goofle.",
+            // "did:example:issuer001",
+            // "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE",
+        ])
+        .expect("Unable to set function arguments")
+        .build()
+        .expect("Unable to build chaincode call");
 
-    // let get_result = fabric_client
-    //     .mock_fn("did", "issuer_did", "public_key")
-    //     .await;
-    // info!("{:?}", get_result);
+    let result = match client
+        .evaluate(
+            prepared_transaction,
+            String::new(),
+            channel_name.to_string(),
+        )
+        .await
+    {
+        Ok(x) => {
+            let result = String::from_utf8_lossy(&x);
+            info!("Query result: {}", result)
+        }
+        Err(e) => {
+            error!("Unable to build connect. Err: {}", e);
+            return;
+        }
+    };
 }
